@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f0f4f8;
+  --color-foreground: #333333;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+
+/* Ocultar elementos de UI não imprimíveis no momento da impressão */
+@media print {
+  .nao-imprimir {
+      display: none !important;
+  }
+
+  body, html {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+  }
+
+  /* ÁREA DO EDITOR */
+  #area-impressao-avancada {
+      position: absolute;
+      top: 0;
+      left: 0;
+      margin: 0;
+      padding: 0;
+      display: block !important;
+      overflow: hidden;
+  }
+
+  /* Quando o usuário escolhe Cartão (9x5 cm) */
+  #area-impressao-avancada.cartao .print-canvas {
+      width: 90mm !important;
+      height: 50mm !important;
+      position: relative;
+      overflow: hidden;
+  }
+
+  /* Quando o usuário escolhe A4 (Preencher Folha) */
+  #area-impressao-avancada.a4 .print-canvas {
+      width: 210mm !important;
+      height: 297mm !important;
+      position: relative;
+      overflow: hidden;
+  }
+
+  /* Quando o usuário escolhe A4 Paisagem */
+  #area-impressao-avancada.a4-landscape .print-canvas {
+      width: 297mm !important;
+      height: 210mm !important;
+      position: relative;
+      overflow: hidden;
+  }
+
+  /* Quando o usuário escolhe A5 Paisagem */
+  #area-impressao-avancada.a5 .print-canvas {
+      width: 210mm !important;
+      height: 148mm !important;
+      position: relative;
+      overflow: hidden;
+  }
+
+
+
+  /* Textos da Impressão */
+  .print-canvas .print-text {
+      position: absolute;
+      white-space: nowrap;
+      /* O translate é feito via style inline */
+  }
+
+  @page {
+      margin: 0;
+  }
+}

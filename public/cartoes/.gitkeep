@@ -1,0 +1,1 @@
+Este arquivo existe para garantir que o Git (e consequentemente a Vercel) crie a pasta 'cartoes' mesmo que ela esteja vazia inicialmente.
