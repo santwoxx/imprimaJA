@@ -30,7 +30,9 @@ export default function EditorModal({
   onClose: () => void;
 }) {
   const [elements, setElements] = useState<EditorElement[]>([]);
-  const [printSize, setPrintSize] = useState<PrintSize>("a4");
+  const [printSize, setPrintSize] = useState<PrintSize>(
+    imagem.includes('modelo2') ? "a4-landscape" : "a4"
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [snapLines, setSnapLines] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
@@ -42,15 +44,39 @@ export default function EditorModal({
   // Initialize with the main image
   useEffect(() => {
     if (elements.length === 0) {
-      setElements([{
+      const initialSize = imagem.includes('modelo2') ? "a4-landscape" : "a4";
+      const initialElements: EditorElement[] = [{
         id: "main-image",
         type: "image",
         src: imagem,
         x: 50,
         y: 50,
-        width: printSize === 'a4' || printSize === 'a4-landscape' ? 40 : 80, // Default relative size
-        height: printSize === 'a4' || printSize === 'a4-landscape' ? 20 : 40,
-      }]);
+        width: initialSize === 'a4' || initialSize === 'a4-landscape' ? 40 : 80, // Default relative size
+        height: initialSize === 'a4' || initialSize === 'a4-landscape' ? 20 : 40,
+      }];
+
+      if (imagem.includes('modelo1')) {
+        initialElements.push(
+          { id: "m1-nome", type: "text", text: "Mesa Qatar", x: 50, y: 35, fontSize: 8, color: "#000000", fontWeight: "bold" },
+          { id: "m1-preco", type: "text", text: "2,499,00 av.", x: 50, y: 55, fontSize: 12, color: "#000000", fontWeight: "bold" },
+          { id: "m1-parc", type: "text", text: "10x 249,90", x: 50, y: 70, fontSize: 6, color: "#000000", fontWeight: "bold" },
+          { id: "m1-cod", type: "text", text: "cod: 415", x: 50, y: 85, fontSize: 4, color: "#000000", fontWeight: "bold" }
+        );
+      } else if (imagem.includes('modelo2')) {
+        initialElements.push(
+          { id: "m2-nome1", type: "text", text: "mesa qatar", x: 26, y: 35, fontSize: 6, color: "#000000", fontWeight: "bold" },
+          { id: "m2-preco1", type: "text", text: "2,499,00 av.", x: 26, y: 53, fontSize: 9, color: "#000000", fontWeight: "bold" },
+          { id: "m2-parc1", type: "text", text: "10x 249,90", x: 26, y: 68, fontSize: 5, color: "#000000", fontWeight: "bold" },
+          { id: "m2-cod1", type: "text", text: "cod: 415", x: 26, y: 83, fontSize: 3, color: "#000000", fontWeight: "bold" },
+          
+          { id: "m2-nome2", type: "text", text: "colchão/baú", x: 74, y: 35, fontSize: 6, color: "#000000", fontWeight: "bold" },
+          { id: "m2-preco2", type: "text", text: "3,498,00 av.", x: 74, y: 53, fontSize: 9, color: "#000000", fontWeight: "bold" },
+          { id: "m2-parc2", type: "text", text: "10x 349,80", x: 74, y: 68, fontSize: 5, color: "#000000", fontWeight: "bold" },
+          { id: "m2-cod2", type: "text", text: "cod: 283/283 279", x: 74, y: 83, fontSize: 3, color: "#000000", fontWeight: "bold" }
+        );
+      }
+
+      setElements(initialElements);
     }
   }, []); // Run once
 
