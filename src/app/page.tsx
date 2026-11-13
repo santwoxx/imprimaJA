@@ -21,10 +21,13 @@ export default function Home() {
       return extensoesPermitidas.includes(ext);
     });
 
-    // Panfleto "para imprimir" fica fixo como o primeiro da lista
-    images.sort((a, b) =>
-      Number(b.startsWith("para-imprimir")) - Number(a.startsWith("para-imprimir"))
-    );
+    // Itens fixos no topo da galeria, nesta ordem (o resto segue em ordem alfabética)
+    const fixados = ["para-imprimir", "cartao visita - jamile"];
+    const posicao = (file: string) => {
+      const i = fixados.findIndex(f => file.startsWith(f));
+      return i === -1 ? fixados.length : i;
+    };
+    images.sort((a, b) => posicao(a) - posicao(b));
   } catch (error) {
     console.error("Erro ao ler pasta de cartões:", error);
   }
