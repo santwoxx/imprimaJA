@@ -22,6 +22,42 @@ type EditorElement = {
 
 type PrintSize = "cartao" | "a5" | "a4" | "a4-landscape";
 
+// Imagens com este nome já abrem com 4 cópias na folha A4 (2 em cima, 2 embaixo)
+const MODELO_4_POR_FOLHA = "para-imprimir";
+
+// Descobre a proporção (largura / altura) real da imagem
+const carregarProporcao = (src: string) =>
+  new Promise<number>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img.naturalWidth / img.naturalHeight);
+    img.onerror = () => resolve(2 / 3);
+    img.src = src;
+  });
+
+// Monta 4 cópias em grade 2x2 numa folha A4 retrato (210 x 297 mm),
+// cada uma centralizada no seu quarto da folha, com margem para corte.
+const montarGrade2x2 = (src: string, proporcao: number): EditorElement[] => {
+  const FOLHA_W = 210;
+  const FOLHA_H = 297;
+  const MARGEM = 5.5; // mm em volta de cada cópia
+  const maxW = FOLHA_W / 2 - MARGEM * 2;
+  const maxH = FOLHA_H / 2 - MARGEM * 2;
+  const larguraMm = Math.min(maxW, maxH * proporcao);
+  const width = (larguraMm / FOLHA_W) * 100;
+
+  return [25, 75].flatMap((y) =>
+    [25, 75].map((x) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      type: "image" as const,
+      src,
+      x,
+      y,
+      width,
+      height: width,
+    }))
+  );
+};
+
 export default function EditorModal({
   imagem,
   onClose,
@@ -44,6 +80,11 @@ export default function EditorModal({
   // Initialize with the main image
   useEffect(() => {
     if (elements.length === 0) {
+      if (imagem.includes(MODELO_4_POR_FOLHA)) {
+        carregarProporcao(imagem).then((p) => setElements(montarGrade2x2(imagem, p)));
+        return;
+      }
+
       const initialSize = imagem.includes('modelo2') ? "a4-landscape" : "a4";
       const initialElements: EditorElement[] = [{
         id: "main-image",
@@ -147,6 +188,15 @@ export default function EditorModal({
 
     // Remove as imagens antigas e adiciona o grid
     setElements([...elements.filter(e => e.type !== "image"), ...newElements]);
+    setSelectedId(null);
+  };
+
+  const preencher4PorFolha = async () => {
+    const baseImg = elements.find(e => e.type === "image");
+    const src = baseImg?.src ?? imagem;
+    const proporcao = await carregarProporcao(src);
+    setPrintSize("a4");
+    setElements([...elements.filter(e => e.type !== "image"), ...montarGrade2x2(src, proporcao)]);
     setSelectedId(null);
   };
 
@@ -267,6 +317,9 @@ export default function EditorModal({
                 ⊞ Preencher Folha com Cartões
               </button>
             )}
+            <button onClick={preencher4PorFolha} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
+              ⊞ 4 por Folha A4 (2 em cima, 2 embaixo)
+            </button>
             <p className="text-xs text-blue-700 mt-1">Dica: Clique em qualquer item na imagem para editar.</p>
           </div>
 
@@ -441,6 +494,9 @@ export default function EditorModal({
           </div>
         </div>
       </div>
+
+      {/* Força o papel A4 retrato na janela de impressão (evita cair em "Carta" e cortar a 2ª linha) */}
+      {printSize === "a4" && <style>{`@page { size: A4 portrait; margin: 0; }`}</style>}
 
       {/* ÁREA DE IMPRESSÃO INVISÍVEL NO MODO NORMAL */}
       <div id="area-impressao-avancada" className={printSize} style={{ display: isPrinting ? 'block' : 'none' }}>

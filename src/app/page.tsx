@@ -20,6 +20,11 @@ export default function Home() {
       const ext = path.extname(file).toLowerCase();
       return extensoesPermitidas.includes(ext);
     });
+
+    // Panfleto "para imprimir" fica fixo como o primeiro da lista
+    images.sort((a, b) =>
+      Number(b.startsWith("para-imprimir")) - Number(a.startsWith("para-imprimir"))
+    );
   } catch (error) {
     console.error("Erro ao ler pasta de cartões:", error);
   }
