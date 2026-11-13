@@ -22,8 +22,24 @@ type EditorElement = {
 
 type PrintSize = "cartao" | "a5" | "a4" | "a4-landscape";
 
-// Imagens com este nome já abrem com 4 cópias na folha A4 (2 em cima, 2 embaixo)
-const MODELO_4_POR_FOLHA = "para-imprimir";
+// Folhas em milímetros
+type Folha = { w: number; h: number };
+const A4: Folha = { w: 210, h: 297 };
+const A4_PAISAGEM: Folha = { w: 297, h: 210 };
+
+// Grade de cópias: colunas x linhas, margem da folha e espaço entre cópias (mm)
+type Grade = { cols: number; rows: number; margem: number; espaco: number; larguraMax?: number };
+// Panfleto: 4 por folha (2 em cima, 2 embaixo), com folga para corte
+const GRADE_4_POR_FOLHA: Grade = { cols: 2, rows: 2, margem: 5.5, espaco: 11 };
+// Cartões de visita: encostados (um corte separa dois cartões), no máximo 9 cm de largura
+const GRADE_CARTOES: Grade = { cols: 2, rows: 5, margem: 5, espaco: 0, larguraMax: 90 };
+const GRADE_CARTOES_PAISAGEM: Grade = { cols: 3, rows: 3, margem: 5, espaco: 0, larguraMax: 90 };
+
+// Imagens que já abrem com a folha A4 montada, prontas para imprimir
+const LAYOUTS_FIXOS: { nome: string; grade: Grade }[] = [
+  { nome: "para-imprimir", grade: GRADE_4_POR_FOLHA },
+  { nome: "cartao visita - jamile", grade: GRADE_CARTOES },
+];
 
 // Descobre a proporção (largura / altura) real da imagem
 const carregarProporcao = (src: string) =>
@@ -34,28 +50,33 @@ const carregarProporcao = (src: string) =>
     img.src = src;
   });
 
-// Monta 4 cópias em grade 2x2 numa folha A4 retrato (210 x 297 mm),
-// cada uma centralizada no seu quarto da folha, com margem para corte.
-const montarGrade2x2 = (src: string, proporcao: number): EditorElement[] => {
-  const FOLHA_W = 210;
-  const FOLHA_H = 297;
-  const MARGEM = 5.5; // mm em volta de cada cópia
-  const maxW = FOLHA_W / 2 - MARGEM * 2;
-  const maxH = FOLHA_H / 2 - MARGEM * 2;
-  const larguraMm = Math.min(maxW, maxH * proporcao);
-  const width = (larguraMm / FOLHA_W) * 100;
+// Monta as cópias da imagem em grade, do maior tamanho que cabe na folha
+// sem distorcer, com o bloco inteiro centralizado.
+const montarGrade = (src: string, proporcao: number, grade: Grade, folha: Folha = A4): EditorElement[] => {
+  const { cols, rows, margem, espaco, larguraMax = Infinity } = grade;
+  const maxW = (folha.w - 2 * margem - (cols - 1) * espaco) / cols;
+  const maxH = (folha.h - 2 * margem - (rows - 1) * espaco) / rows;
+  const w = Math.min(maxW, maxH * proporcao, larguraMax);
+  const h = w / proporcao;
+  const x0 = (folha.w - (cols * w + (cols - 1) * espaco)) / 2;
+  const y0 = (folha.h - (rows * h + (rows - 1) * espaco)) / 2;
+  const width = (w / folha.w) * 100;
 
-  return [25, 75].flatMap((y) =>
-    [25, 75].map((x) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      type: "image" as const,
-      src,
-      x,
-      y,
-      width,
-      height: width,
-    }))
-  );
+  const copias: EditorElement[] = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      copias.push({
+        id: Math.random().toString(36).substr(2, 9),
+        type: "image",
+        src,
+        x: ((x0 + col * (w + espaco) + w / 2) / folha.w) * 100,
+        y: ((y0 + row * (h + espaco) + h / 2) / folha.h) * 100,
+        width,
+        height: width,
+      });
+    }
+  }
+  return copias;
 };
 
 export default function EditorModal({
@@ -80,8 +101,9 @@ export default function EditorModal({
   // Initialize with the main image
   useEffect(() => {
     if (elements.length === 0) {
-      if (imagem.includes(MODELO_4_POR_FOLHA)) {
-        carregarProporcao(imagem).then((p) => setElements(montarGrade2x2(imagem, p)));
+      const layoutFixo = LAYOUTS_FIXOS.find((l) => imagem.includes(l.nome));
+      if (layoutFixo) {
+        carregarProporcao(imagem).then((p) => setElements(montarGrade(imagem, p, layoutFixo.grade)));
         return;
       }
 
@@ -151,53 +173,24 @@ export default function EditorModal({
     setSelectedId(newId);
   };
 
-  const preencherFolha = () => {
-    // Acha a imagem principal para usar como base
-    const baseImg = elements.find(e => e.type === "image");
-    if (!baseImg) return;
-
-    // Se for A4 retrato, vamos fazer 2 colunas e 5 linhas
-    const newElements: EditorElement[] = [];
-    
-    // Configurações para A4 Retrato (2x5 = 10 cartões)
-    let cols = 2;
-    let rows = 5;
-    let imgWidth = 45; // 45% width (2 cols = 90%)
-    let imgHeight = 18; // 18% height (5 rows = 90%)
-    
-    if (printSize === 'a4-landscape') {
-      cols = 3;
-      rows = 3;
-      imgWidth = 30;
-      imgHeight = 30;
-    }
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        // Ignora a posição (0,0) que será a original (ou podemos recriar todas e limpar)
-        newElements.push({
-          ...baseImg,
-          id: Math.random().toString(36).substr(2, 9),
-          x: 25 + (col * 50), // Coluna 1: 25%, Coluna 2: 75%
-          y: 10 + (row * 20), // Distribuição de cima para baixo
-          width: imgWidth,
-          height: imgHeight,
-        });
-      }
-    }
-
-    // Remove as imagens antigas e adiciona o grid
-    setElements([...elements.filter(e => e.type !== "image"), ...newElements]);
-    setSelectedId(null);
-  };
-
-  const preencher4PorFolha = async () => {
+  // Troca as imagens da folha pela grade de cópias (mantém os textos)
+  const aplicarGrade = async (grade: Grade, folha: Folha) => {
     const baseImg = elements.find(e => e.type === "image");
     const src = baseImg?.src ?? imagem;
     const proporcao = await carregarProporcao(src);
-    setPrintSize("a4");
-    setElements([...elements.filter(e => e.type !== "image"), ...montarGrade2x2(src, proporcao)]);
+    setElements([...elements.filter(e => e.type !== "image"), ...montarGrade(src, proporcao, grade, folha)]);
     setSelectedId(null);
+  };
+
+  // A4 retrato: 2 colunas x 5 linhas = 10 cartões | A4 paisagem: 3 x 3 = 9 cartões
+  const preencherFolha = () =>
+    printSize === "a4-landscape"
+      ? aplicarGrade(GRADE_CARTOES_PAISAGEM, A4_PAISAGEM)
+      : aplicarGrade(GRADE_CARTOES, A4);
+
+  const preencher4PorFolha = () => {
+    setPrintSize("a4");
+    return aplicarGrade(GRADE_4_POR_FOLHA, A4);
   };
 
   const updateElement = (id: string, updates: Partial<EditorElement>) => {
